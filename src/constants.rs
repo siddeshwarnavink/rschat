@@ -1,4 +1,6 @@
 pub const WS_GUID: &str = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 
+pub const DEFAULT_NAME: &str = "Guest";
+
 pub const ERR_WS_CONN: &str = "Invalid Websocket Handshake.";
 pub const ERR_WS_VER: &str = "Unsupported WebSocket version.";

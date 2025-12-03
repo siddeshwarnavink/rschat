@@ -1,44 +1,82 @@
-///
-/// WebSocket protocol frame parser
-///
-/// Reference: <https://websocket.org/guides/websocket-protocol/>
-///
-pub mod ws_frame;
 mod constants;
+pub mod service;
+pub mod ws;
 
 use std::io;
 use std::process::exit;
+use std::sync::Arc;
 
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD as B64;
+use bytes::BytesMut;
 use sha1::{Digest, Sha1};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
+use tokio::sync::Mutex;
 
 use crate::constants::*;
+use crate::service::message::{Message, MessageKind};
+use crate::service::user::User;
+use crate::ws::frame;
 
-async fn handle_client(stream: &mut TcpStream) -> io::Result<()> {
-    let mut buf = [0; 1024];
+async fn handle_client_request(
+    shared_stream: Arc<Mutex<TcpStream>>,
+    mut buf: BytesMut,
+    user_id: String,
+) -> io::Result<()> {
+    loop {
+        let mut stream = shared_stream.lock().await;
+        buf.clear();
 
-    let mut buf_size = stream.read(&mut buf).await?;
-    let buf_str = str::from_utf8(&buf[0..buf_size])
+        let mut len = stream.read_buf(&mut buf).await?;
+        if len < 4 {
+            User::leave(&user_id);
+            break Ok(());
+        }
+
+        if let Ok(req) = frame::get_text(&buf[..len]) {
+            if req.len() < 4 {
+                println!("[error] invalid request from {user_id}");
+                drop(stream);
+                tokio::task::yield_now().await;
+                continue;
+            }
+
+            let cmd = &req[..3];
+            let payload = &req[4..];
+
+            let response = format!("cmd = \"{cmd}\" payload = \"{payload}\"");
+
+            buf.clear();
+            len = frame::set_text(&mut buf, &response);
+
+            stream.write_all(&buf[..len]).await?;
+        }
+
+        drop(stream);
+        tokio::task::yield_now().await;
+    }
+}
+
+async fn handle_new_client(
+    shared_stream: Arc<Mutex<TcpStream>>,
+) -> io::Result<()> {
+    let mut stream = shared_stream.lock().await;
+
+    let mut buf = BytesMut::with_capacity(4096);
+    buf.reserve(1024);
+
+    let len = stream.read_buf(&mut buf).await?;
+    let s = str::from_utf8(&buf[0..len])
         .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
 
     let mut accept_key = None;
-    for line in buf_str.split("\r\n") {
+    for line in s.split("\r\n") {
         let mut it = line.split(": ");
         let key = it.next().unwrap_or_default();
         let value = it.next().unwrap_or_default();
 
         match key {
-            "Connection" => {
-                if value != "Upgrade" {
-                    return Err(io::Error::new(
-                        io::ErrorKind::InvalidData,
-                        ERR_WS_CONN,
-                    ));
-                }
-            }
             "Upgrade" => {
                 if value != "websocket" {
                     return Err(io::Error::new(
@@ -80,17 +118,22 @@ async fn handle_client(stream: &mut TcpStream) -> io::Result<()> {
         );
         stream.write_all(response.as_bytes()).await?;
 
-        loop {
-            buf_size = stream.read(&mut buf).await?;
+        let user_id = accept.to_string();
+        User::join(&user_id, DEFAULT_NAME);
+        Message::post(
+            MessageKind::ServerMessage,
+            &format!("{} joined the chat.", DEFAULT_NAME),
+        );
 
-            // TODO: Check if close frame to close the connection.
+        drop(response);
+        drop(stream);
 
-            if let Ok(msg) = ws_frame::get_text(&buf[..buf_size]) {
-                buf_size = ws_frame::set_text(&mut buf, msg.as_str());
-                stream.write_all(&buf[..buf_size]).await?;
-            }
-            tokio::task::yield_now().await;
-        }
+        handle_client_request(
+            shared_stream.clone(),
+            buf.into(),
+            user_id.into(),
+        )
+        .await?;
     }
 
     Ok(())
@@ -107,10 +150,15 @@ async fn main() {
     println!("Listening to ws://{}/", addr);
 
     loop {
-        if let Ok((mut stream, _)) = listener.accept().await {
+        if let Ok((stream, _)) = listener.accept().await {
+            let shared_stream = Arc::new(Mutex::new(stream));
+
             tokio::spawn(async move {
-                if let Err(err) = handle_client(&mut stream).await {
+                if let Err(err) = handle_new_client(shared_stream.clone()).await
+                {
                     let msg = err.to_string();
+                    eprintln!("[error] {msg}");
+
                     let response = format!(
                         "HTTP/1.1 400 Bad Request\r\n\
                          Content-Type: text/plain\r\n\
@@ -118,6 +166,8 @@ async fn main() {
                         msg.len(),
                         msg
                     );
+
+                    let mut stream = shared_stream.lock().await;
                     let _ = stream.write_all(response.as_bytes()).await;
                 }
             });
