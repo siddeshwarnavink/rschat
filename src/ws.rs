@@ -4,29 +4,29 @@
 /// Reference: <https://websocket.org/guides/websocket-protocol/>
 ///
 pub mod frame {
-    use bytes::{BytesMut, BufMut};
+    use bytes::{BufMut, BytesMut};
 
     /// Emplace Websocket Text frame with message into buffer.
     pub fn set_text(buf: &mut BytesMut, msg: &str) -> usize {
-	let start_len = buf.len();
+        let start_len = buf.len();
 
-	buf.put_u8(0x81); // FIN + Text opcode
+        buf.put_u8(0x81); // FIN + Text opcode
 
-	let len = msg.len();
+        let len = msg.len();
 
-	if len <= 125 {
-	    buf.put_u8(len as u8);
-	} else if len < 65536 {
-	    buf.put_u8(126);
-	    buf.put_u16(len as u16);
-	} else {
-	    buf.put_u8(127);
-	    buf.put_u64(len as u64);
-	}
+        if len <= 125 {
+            buf.put_u8(len as u8);
+        } else if len < 65536 {
+            buf.put_u8(126);
+            buf.put_u16(len as u16);
+        } else {
+            buf.put_u8(127);
+            buf.put_u64(len as u64);
+        }
 
-	buf.extend_from_slice(msg.as_bytes());
+        buf.extend_from_slice(msg.as_bytes());
 
-	buf.len() - start_len
+        buf.len() - start_len
     }
 
     /// Extract message from Websocket Text frame buffer.
