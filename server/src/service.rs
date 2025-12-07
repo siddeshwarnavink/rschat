@@ -14,10 +14,10 @@ use tokio::sync::Mutex;
 use tokio::task::yield_now;
 use tokio::time::timeout;
 
+use crate::USERS;
 use crate::constants::*;
 use crate::http::header::{self, HttpHeader, HttpVerb};
 use crate::ws::frame;
-use crate::{USERS};
 
 #[derive(Serialize, Deserialize)]
 pub struct Message {
@@ -54,6 +54,9 @@ pub enum Payload {
 
     #[serde(rename = "new_user")]
     NewUser { user: User },
+
+    #[serde(rename = "user_left")]
+    UserLeft { user_id: String },
 }
 
 async fn client_request_handler(
@@ -118,7 +121,12 @@ async fn client_request_handler(
                         .await;
                     }
                     Payload::SendMessage { recipient, payload } => {
-                        relay_message(user_id.as_str(), recipient.as_str(), payload.as_str()).await;
+                        relay_message(
+                            user_id.as_str(),
+                            recipient.as_str(),
+                            payload.as_str(),
+                        )
+                        .await;
                     }
                     _ => {}
                 }
@@ -139,14 +147,11 @@ async fn dispatch_all_keys(
         None => return,
     };
 
-    let user_data = Payload::NewUser {
-        user: user.clone(),
-    };
+    let user_data = Payload::NewUser { user: user.clone() };
     let user_json = match serde_json::to_string(&user_data) {
         Ok(j) => j,
         Err(_) => return,
     };
-
 
     let mut buf = BytesMut::with_capacity(4096);
     buf.reserve(1024);
@@ -166,9 +171,7 @@ async fn dispatch_all_keys(
 
         drop(other_user_stream);
 
-        let other_user_data = Payload::NewUser {
-            user: user.clone(),
-        };
+        let other_user_data = Payload::NewUser { user: user.clone() };
         let other_user_json = match serde_json::to_string(&other_user_data) {
             Ok(j) => j,
             Err(_) => continue,
@@ -382,18 +385,32 @@ async fn user_join(id: &str, shared_stream: Arc<Mutex<TcpStream>>, name: &str) {
         id: id.into(),
         name: name.into(),
         shared_stream: shared_stream.clone(),
-        public_key: None
+        public_key: None,
     };
 
     users.insert(id.into(), new_user);
-    println!("[info] New user {id} joined.");
 }
 
 async fn user_leave(id: &str) {
     let mut users = USERS.lock().await;
-
     users.remove(id);
-    println!("[info] User {id} left.");
+
+    let mut buf = BytesMut::with_capacity(4096);
+    buf.reserve(1024);
+
+    let msg = Payload::UserLeft {
+        user_id: id.to_string(),
+    };
+
+    for (_, user) in users.iter() {
+        let mut stream = user.shared_stream.lock().await;
+
+        if let Ok(json) = serde_json::to_string(&msg) {
+            buf.clear();
+            let len = frame::set_text(&mut buf, &json);
+            let _ = stream.write_all(&buf[..len]).await;
+        }
+    }
 }
 
 async fn user_first_setup(id: &str, name: &str, public_key: &str) {

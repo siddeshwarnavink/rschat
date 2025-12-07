@@ -1,7 +1,7 @@
-import init, { 
+import init, {
     generate_keypair,
     encrypt_message,
-    decrypt_message 
+    decrypt_message
 } from "/crypto_wasm.js";
 
 const welcome = document.getElementById("welcome_dialog");
@@ -75,6 +75,11 @@ function onmessage(event) {
             const user = users[msg.sender];
             const text = decrypt_message(msg.payload, my_keys.private_key);
             append_user_message(user.name, text);
+            break;
+        case "user_left":
+            const name = users[msg.user_id].name;
+            delete users[msg.user_id];
+            append_server_message(`${name} left the chat.`);
             break;
     }
 }

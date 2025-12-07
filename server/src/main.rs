@@ -12,7 +12,7 @@ use tokio::io::AsyncWriteExt;
 use tokio::net::TcpListener;
 use tokio::sync::Mutex;
 
-use crate::service::{User};
+use crate::service::User;
 
 lazy_static! {
     static ref USERS: Mutex<HashMap<String, User>> = Mutex::new(HashMap::new());
