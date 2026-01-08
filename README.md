@@ -1,3 +1,3 @@
-# wetsocks
+# RSChat
 
-A WebSocket-based chat server to communicate is a "memory-safe" way.
+A WebSocket-based encrypted chat to communicate is a "memory-safe" way.

@@ -1,0 +1,4 @@
+#!/bin/sh
+wasm-pack build crypto-wasm \
+  --target web \
+  --out-dir "$(pwd)/static/crypto-wasm"

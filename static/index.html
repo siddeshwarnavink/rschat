@@ -6,8 +6,8 @@
     </head>
     <body>
         <dialog class="model" id="welcome_dialog">
-            <h1>Hey there!</h1>
-            <p>Welcome to the Anonymous, written in Rust btw. Give yourself a nickname to get started!</p>
+            <h1>Hey there! 👋</h1>
+            <p>Welcome to <strong>RSChat</strong> - the encrypted chat. Give yourself a nickname to get started!</p>
 
             <form method="dialog">
                 <input class="input" name="nickname" placeholder="e.g Sid" autocomplete="off" required />
@@ -17,12 +17,11 @@
 
         <div class="container">
             <div id="messages"></div>
-
             <form id="message_form">
                 <div style="flex:1;">&nbsp;</div>
                 <div class="row">
                     <input class="input" name="message" autocomplete="off" required
-                    placeholder="e.g: I'd just like to interject for a moment. What you're refering to as Linux, is in fact, GNU/Linux..." />
+                                                        placeholder="Type your message..." />
                     <button class="btn" type="submit">Send</button>
                 </div>
                 <div style="flex:1;">&nbsp;</div>

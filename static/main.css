@@ -1,106 +1,214 @@
-@import url('https://fonts.googleapis.com/css2?family=Nunito+Sans:ital,opsz,wght@0,6..12,200..1000;1,6..12,200..1000&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root {
+    --primary-bg: linear-gradient(0deg,rgba(18, 18, 16, 1) 0%, rgba(122, 120, 120, 1) 74%);
+    --primary-color: #121210;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
 
 body {
-    margin: 0;
-    font-family: "Nunito Sans", sans-serif;
+    font-family: "Inter", sans-serif;
+    background: var(--primary-bg);
+    height: 100vh;
+    overflow: hidden;
 }
 
 .input {
-    padding: 6px 12px;
-    font-size: 1.15em;
-    border: 1px solid #ccc;
-    border-radius: 6px;
+    padding: 12px 16px;
+    font-size: 0.95rem;
+    border: 2px solid #e0e0e0;
+    border-radius: 12px;
     outline: none;
+    font-family: "Inter", sans-serif;
+    transition: all 0.3s ease;
+    background: white;
+}
+
+.input:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
 .btn {
     cursor: pointer;
-    background: #d89f24;
-    background: linear-gradient(0deg, rgba(216, 159, 36, 1) 0%, rgba(245, 211, 140, 1) 50%, rgba(247, 181, 39, 1) 100%);
-    color: #000;
-    border: 1px solid #efefef;
-    border-radius: 6px;
-    padding: 6px 32px;
-    font-size: 1.15em;
-    font-weight: bold;
+    background: var(--primary-bg);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    padding: 12px 32px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    font-family: "Inter", sans-serif;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
 
-    &:hover {
-        background: #D89F24;
-        background: linear-gradient(0deg, rgba(216, 159, 36, 1) 0%, rgba(245, 211, 140, 1) 77%, rgba(247, 181, 39, 1) 100%);
-    }
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+.btn:active {
+    transform: translateY(0);
 }
 
 @keyframes ass_sliding {
     from {
-        transform: translateY(-500px);
+        opacity: 0;
+        transform: translate(-50%, calc(-50% - 30px)) scale(0.95);
     }
     to {
-        transform: translateY(0px);
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
     }
 }
 
 dialog.model {
+    position: fixed;
+    top: 50%;
+    left: 50%;
     margin-top: 20px;
-    border: 1px solid #ccc;
-    border-radius: 6px;
-    box-shadow:0 2px 4px 0 rgba(0,0,0,0.16),0 2px 10px 0 rgba(0,0,0,0.12);
+    border: none;
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
     width: 450px;
-    animation: ass_sliding 500ms;
+    padding: 40px;
+    animation: ass_sliding 400ms cubic-bezier(0.34, 1.56, 0.64, 1);
+    animation-fill-mode: both;
+    background: white;
+}
 
-    &::backdrop {
-        background: rgb(0 0 0 / 25%);
-    }
+dialog.model::backdrop {
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(8px);
+}
 
-    h1 {
-        font-size: 1.75rem;
-    }
+dialog.model h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    background: var(--primary-bg);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 12px;
+}
 
-    h1, p {
-        padding: 0;
-        margin: 0;
-        margin-bottom: 5px;
-    }
+dialog.model p {
+    color: #666;
+    line-height: 1.6;
+    margin-bottom: 24px;
+    font-size: 0.95rem;
+}
 
-    form {
-        margin-top: 15px;
-    }
+dialog.model form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
 }
 
 .container {
     height: 100vh;
     display: flex;
     flex-flow: column;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
 }
 
 #messages {
-    height: 90%;
-    overflow-y: scroll;
-    background-color: #efefef;
-    padding: 12px;
+    flex: 1;
+    overflow-y: auto;
+    background: white;
+    border-radius: 20px 20px 0 0;
+    padding: 24px;
+    box-shadow: 0 -2px 20px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
 
-    .server-message {
-        color: #555;
-        padding: 5px 0;
-    }
+#messages::-webkit-scrollbar {
+    width: 8px;
+}
 
-    .user-message {
-        font-size: 1.2em;
+#messages::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+#messages::-webkit-scrollbar-thumb {
+    background: #e0e0e0;
+    border-radius: 10px;
+}
+
+#messages::-webkit-scrollbar-thumb:hover {
+    background: #c0c0c0;
+}
+
+#messages .server-message {
+    color: #999;
+    font-size: 0.85rem;
+    text-align: center;
+    padding: 8px 0;
+    font-style: italic;
+}
+
+#messages .user-message {
+    font-size: 0.95rem;
+    padding: 12px 16px;
+    background: #f8f9fa;
+    border-radius: 12px;
+    line-height: 1.5;
+    word-wrap: break-word;
+    animation: messageSlide 0.3s ease;
+}
+
+@keyframes messageSlide {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
     }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+#messages .user-message b {
+    font-weight: 600;
+    margin-right: 4px;
 }
 
 #message_form {
     display: flex;
     flex-flow: column;
-    justify-content: center;
-    background-color: #ffffff;
+    background: white;
+    border-radius: 0 0 20px 20px;
+    box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+    padding: 20px 24px;
+}
 
-    .row {
-        display: grid;
-        grid-template-columns: 90% auto;
-        padding: 0 25px;
+#message_form .row {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
 
-        input {
-            margin-right: 15px;
-        }
-    }
+#message_form .row input {
+    flex: 1;
+}
+
+#message_form .row .btn {
+    padding: 12px 28px;
+    white-space: nowrap;
+}
+
+/* Empty space styling */
+#message_form > div:first-child,
+#message_form > div:last-child {
+    display: none;
 }
