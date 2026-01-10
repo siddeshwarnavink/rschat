@@ -204,52 +204,69 @@ async fn relay_message(sender: &str, recipient: &str, payload: &str) {
     }
 }
 
-async fn not_found_handler(
-    shared_stream: Arc<Mutex<TcpStream>>,
-) -> io::Result<()> {
-    let mut stream = shared_stream.lock().await;
-
-    let body = "404 Not Found";
-    let response = format!(
-        "HTTP/1.1 404 Not Found\r\n\
-         Content-Type: text/plain; charset=utf-8\r\n\
-         Content-Length: {}\r\n\
-         Connection: close\r\n\
-         \r\n\
-         {}",
-        body.len(),
-        body
-    );
-
-    stream.write_all(response.as_bytes()).await?;
-    stream.flush().await?;
-
-    Ok(())
-}
-
 async fn static_resource_handler(
     shared_stream: Arc<Mutex<TcpStream>>,
     filename: &str,
-    mime_type: &str,
 ) -> io::Result<()> {
     let mut stream = shared_stream.lock().await;
 
-    let path = format!("./static/{filename}");
+    let path = format!("./static/{}", filename);
 
-    let body = fs::read(&path).await?;
-    let header = format!(
-        "HTTP/1.1 200 Ok\r\n\
-         Content-Type: {}; charset=utf-8\r\n\
-         Content-Length: {}\r\n\
-         Connection: close\r\n\
-         \r\n",
-        mime_type,
-        body.len(),
-    );
+    match fs::metadata(&path).await {
+        Ok(metadata) if metadata.is_file() => {
+            let mime_type = match path.rsplit('.').next() {
+                Some("html") => "text/html",
+                Some("css") => "text/css",
+                Some("js") => "application/javascript",
+                Some("wasm") => "application/wasm",
+                _ => {
+                    let body = "404 Not Found - Unsupported file type";
+                    let header = format!(
+                        "HTTP/1.1 404 Not Found\r\n\
+                         Content-Type: text/plain; charset=utf-8\r\n\
+                         Content-Length: {}\r\n\
+                         Connection: close\r\n\
+                         \r\n",
+                        body.len()
+                    );
+                    stream.write_all(header.as_bytes()).await?;
+                    stream.write_all(body.as_bytes()).await?;
+                    stream.flush().await?;
+                    return Ok(());
+                }
+            };
 
-    stream.write_all(header.as_bytes()).await?;
-    stream.write_all(&body).await?;
-    stream.flush().await?;
+            let body = fs::read(&path).await?;
+            let header = format!(
+                "HTTP/1.1 200 OK\r\n\
+                 Content-Type: {}; charset=utf-8\r\n\
+                 Content-Length: {}\r\n\
+                 Connection: close\r\n\
+                 \r\n",
+                mime_type,
+                body.len()
+            );
+
+            stream.write_all(header.as_bytes()).await?;
+            stream.write_all(&body).await?;
+            stream.flush().await?;
+        }
+        _ => {
+            let body = "404 Not Found";
+            let header = format!(
+                "HTTP/1.1 404 Not Found\r\n\
+                 Content-Type: text/plain; charset=utf-8\r\n\
+                 Content-Length: {}\r\n\
+                 Connection: close\r\n\
+                 \r\n",
+                body.len()
+            );
+
+            stream.write_all(header.as_bytes()).await?;
+            stream.write_all(body.as_bytes()).await?;
+            stream.flush().await?;
+        }
+    }
 
     Ok(())
 }
@@ -333,49 +350,18 @@ pub async fn request_handler(
 
     match (http_header.verb.clone(), http_header.path.as_str()) {
         (HttpVerb::Get, "/") => {
-            static_resource_handler(
-                shared_stream.clone(),
-                "index.html",
-                "text/html",
-            )
-            .await
-        }
-        (HttpVerb::Get, "/script.js") => {
-            static_resource_handler(
-                shared_stream.clone(),
-                "script.js",
-                "text/javascript",
-            )
-            .await
-        }
-        (HttpVerb::Get, "/main.css") => {
-            static_resource_handler(
-                shared_stream.clone(),
-                "main.css",
-                "text/css",
-            )
-            .await
-        }
-        (HttpVerb::Get, "/crypto_wasm.js") => {
-            static_resource_handler(
-                shared_stream.clone(),
-                "crypto-wasm/crypto_wasm.js",
-                "text/javascript",
-            )
-            .await
-        }
-        (HttpVerb::Get, "/crypto_wasm_bg.wasm") => {
-            static_resource_handler(
-                shared_stream.clone(),
-                "crypto-wasm/crypto_wasm_bg.wasm",
-                "application/wasm",
-            )
-            .await
+            static_resource_handler(shared_stream.clone(), "index.html").await
         }
         (HttpVerb::Get, "/ws") => {
             ws_handler(shared_stream.clone(), http_header, buf).await
         }
-        _ => not_found_handler(shared_stream.clone()).await,
+        _ => {
+            static_resource_handler(
+                shared_stream.clone(),
+                http_header.path.as_str(),
+            )
+            .await
+        }
     }
 }
 

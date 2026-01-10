@@ -1,4 +1,6 @@
 #!/bin/sh
+OUT="$PWD/frontend/src/wasm"
+mkdir -p "$OUT"
 wasm-pack build crypto-wasm \
-  --target web \
-  --out-dir "$(pwd)/static/crypto-wasm"
+  --target bundler \
+  --out-dir "$OUT"

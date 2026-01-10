@@ -1,0 +1,20 @@
+{
+  "name": "frontend",
+  "version": "1.0.0",
+  "main": "main.ts",
+  "scripts": {
+    "check": "tsc --noEmit",
+    "build": "webpack --mode production && npm run deploy",
+    "build:dev": "webpack --mode development",
+    "deploy": "cp -r dist/* ../static/"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.0",
+    "webpack": "^5.89.0",
+    "webpack-cli": "^5.1.4",
+    "ts-loader": "^9.5.1"
+  },
+  "author": "Siddeshwar <siddeshwar.work@gmail.com>",
+  "license": "ISC",
+  "type": "commonjs"
+}
